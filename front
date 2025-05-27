@@ -1,0 +1,659 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'TABI Translator',
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        colorScheme: ColorScheme.dark(
+          primary: Colors.blueAccent,
+          secondary: Colors.tealAccent,
+        ),
+        appBarTheme: const AppBarTheme(
+          elevation: 0,
+          centerTitle: true,
+          titleTextStyle: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const SplashScreen(),
+        '/dashboard': (context) => const DashboardScreen(),
+      },
+    );
+  }
+}
+
+// Splash screen with animation and image logo
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<Color?> _colorAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.1).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _colorAnimation = ColorTween(
+      begin: Colors.blueAccent,
+      end: Colors.tealAccent,
+    ).animate(_controller);
+
+    Future.delayed(const Duration(seconds: 2), () {
+      Navigator.pushReplacementNamed(context, '/dashboard');
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Scaffold(
+          backgroundColor: _colorAnimation.value,
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: Image.asset(
+                    'assets/logo.png', // Make sure to add your image to assets
+                    width: 150,
+                    height: 150,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'TABI',
+                  style: TextStyle(
+                    fontSize: 32,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 30),
+                CircularProgressIndicator(
+                  color: Colors.white.withOpacity(0.8),
+                  strokeWidth: 3,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// Main Dashboard UI with functional elements
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  final TextEditingController _textController = TextEditingController();
+  String _translatedText = '';
+  bool _isTranslating = false;
+  String _fromLanguage ='Bisaya';
+  String _toLanguage = 'Tagalog';
+
+  void _translateText() {
+    if (_textController.text.isEmpty) return;
+    
+    setState(() {
+      _isTranslating = true;
+    });
+
+    // Simulate translation API call
+    Future.delayed(const Duration(seconds: 1), () {
+      setState(() {
+        _translatedText = "This is a simulated translation of: ${_textController.text}";
+        _isTranslating = false;
+      });
+    });
+  }
+
+  void _swapLanguages() {
+    setState(() {
+      final temp = _fromLanguage;
+      _fromLanguage = _toLanguage;
+      _toLanguage = temp;
+      _translatedText = ''; // Clear translation when languages are swapped
+    });
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final screenSize = MediaQuery.of(context).size;
+    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: const Text('TABI Translator'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              // Add settings functionality
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Settings clicked')),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: screenSize.width * 0.04,
+            vertical: isPortrait ? screenSize.height * 0.02 : 0,
+          ),
+          child: Column(
+            children: [
+              SizedBox(height: isPortrait ? screenSize.height * 0.02 : 0),
+              Expanded(
+                flex: isPortrait ? 0 : 1,
+                child: _buildInputCard(context, screenSize),
+              ),
+              if (_translatedText.isNotEmpty)
+                Padding(
+                  padding: EdgeInsets.only(top: isPortrait ? screenSize.height * 0.03 : 10),
+                  child: _buildTranslationCard(context, screenSize),
+                ),
+              SizedBox(height: isPortrait ? screenSize.height * 0.03 : screenSize.height * 0.01),
+              _buildLanguageSelector(context),
+              if (isPortrait) const Spacer(),
+              if (!isPortrait) SizedBox(height: screenSize.height * 0.03),
+              _buildBottomBar(context, isPortrait),
+              if (!isPortrait) SizedBox(height: screenSize.height * 0.02),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputCard(BuildContext context, Size screenSize) {
+    return Card(
+      elevation: 4,
+      color: const Color(0xFF1E1E1E),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(screenSize.width * 0.04),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+           
+            SizedBox(height: screenSize.height * 0.02),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _textController,
+                    decoration: InputDecoration(
+                      hintText: 'Type or paste text here',
+                      hintStyle: const TextStyle(color: Colors.white54),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFF2C2C2C),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: screenSize.width * 0.05,
+                        vertical: screenSize.height * 0.02,
+                      ),
+                    ),
+                    style: const TextStyle(color: Colors.white),
+                    maxLines: 3,
+                    minLines: 1,
+                  ),
+                ),
+                SizedBox(width: screenSize.width * 0.03),
+                FloatingActionButton(
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                  onPressed: _translateText,
+                  child: _isTranslating
+                      ? const CircularProgressIndicator(color: Colors.black)
+                      : const Icon(Icons.arrow_forward, color: Colors.black),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTranslationCard(BuildContext context, Size screenSize) {
+    return Card(
+      elevation: 4,
+      color: const Color(0xFF1E1E1E),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(screenSize.width * 0.04),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Translation',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Colors.white70,
+              ),
+            ),
+            SizedBox(height: screenSize.height * 0.02),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(
+                horizontal: screenSize.width * 0.05,
+                vertical: screenSize.height * 0.02,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2C2C2C),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                _translatedText,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+            SizedBox(height: screenSize.height * 0.01),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.copy, color: Colors.white70),
+                  onPressed: () {
+                    // Add copy functionality
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Copied to clipboard')),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.volume_up, color: Colors.white70),
+                  onPressed: () {
+                    // Add text-to-speech functionality
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Playing translation')),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLanguageSelector(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E1E),
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _LanguageButton(
+                language: _fromLanguage,
+                flag: _fromLanguage == 'Bisaya' ? '🇬🇧' : '🇪🇸',
+                width: constraints.maxWidth * 0.35,
+                onPressed: () {
+                  _showLanguagePicker(true);
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.compare_arrows, color: Colors.white70),
+                onPressed: _swapLanguages,
+              ),
+              _LanguageButton(
+                language: _toLanguage,
+                flag: _toLanguage == 'Bisaya' ? '🇬🇧' : '🇪🇸',
+                width: constraints.maxWidth * 0.35,
+                onPressed: () {
+                  _showLanguagePicker(false);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showLanguagePicker(bool isFromLanguage) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Text('🇬🇧', style: TextStyle(fontSize: 24)),
+                title: const Text('Bisaya'),
+                onTap: () {
+                  setState(() {
+                    if (isFromLanguage) {
+                      _fromLanguage = 'Bisaya';
+                    } else {
+                      _toLanguage = 'Bisaya';
+                    }
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Text('🇪🇸', style: TextStyle(fontSize: 24)),
+                title: const Text('Tagalog'),
+                onTap: () {
+                  setState(() {
+                    if (isFromLanguage) {
+                      _fromLanguage = 'Tagalog';
+                    } else {
+                      _toLanguage = 'Tagalog';
+                    }
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBottomBar(BuildContext context, bool isPortrait) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(20),
+        ),
+      ),
+      child: isPortrait
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _BottomAction(
+                  icon: Icons.history,
+                  label: 'History',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('History clicked')),
+                    );
+                  },
+                ),
+                _BottomAction(
+                  icon: Icons.bookmark,
+                  label: 'Saved',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Saved clicked')),
+                    );
+                  },
+                ),
+                _BottomMic(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Voice input activated')),
+                    );
+                  },
+                ),
+                _BottomAction(
+                  icon: Icons.forum,
+                  label: 'Dictionary',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Dictionary clicked')),
+                    );
+                  },
+                ),
+                _BottomAction(
+                  icon: Icons.camera_alt,
+                  label: 'Camera',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Camera clicked')),
+                    );
+                  },
+                ),
+              ],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _BottomAction(
+                  icon: Icons.history,
+                  label: 'History',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('History clicked')),
+                    );
+                  },
+                ),
+                const SizedBox(width: 20),
+                _BottomAction(
+                  icon: Icons.bookmark,
+                  label: 'Saved',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Saved clicked')),
+                    );
+                  },
+                ),
+                const SizedBox(width: 20),
+                _BottomMic(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Voice input activated')),
+                    );
+                  },
+                ),
+                const SizedBox(width: 20),
+                _BottomAction(
+                  icon: Icons.forum,
+                  label: 'Dictionary',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Dictionary clicked')),
+                    );
+                  },
+                ),
+                const SizedBox(width: 20),
+                _BottomAction(
+                  icon: Icons.camera_alt,
+                  label: 'Camera',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Camera clicked')),
+                    );
+                  },
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+class _LanguageButton extends StatelessWidget {
+  final String language;
+  final String flag;
+  final double width;
+  final VoidCallback? onPressed;
+
+  const _LanguageButton({
+    required this.language,
+    required this.flag,
+    required this.width,
+    this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: width,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              flag,
+              style: const TextStyle(fontSize: 24),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              language,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+
+  const _BottomAction({
+    required this.icon,
+    required this.label,
+    this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            color: Colors.white70,
+            size: 24,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BottomMic extends StatelessWidget {
+  final VoidCallback? onPressed;
+
+  const _BottomMic({
+    this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final buttonSize = screenWidth * 0.14;
+
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: buttonSize,
+        height: buttonSize,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+              blurRadius: 10,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.mic,
+          size: 32,
+          color: Colors.black,
+        ),
+      ),
+    );
+  }
+}
